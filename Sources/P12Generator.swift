@@ -89,8 +89,22 @@ struct P12Generator {
             throw P12GeneratorError.signingFailed
         }
 
-        let container = request.password.withCString { passwordPointer in
-            "P12Maker".withCString { friendlyNamePointer in
+        return try package(
+            privateKey: privateKey,
+            certificate: certificate,
+            password: request.password,
+            friendlyName: "P12Maker"
+        )
+    }
+
+    static func package(
+        privateKey: OpaquePointer,
+        certificate: OpaquePointer,
+        password: String,
+        friendlyName: String
+    ) throws -> Data {
+        let container = password.withCString { passwordPointer in
+            friendlyName.withCString { friendlyNamePointer in
                 PKCS12_create(
                     passwordPointer,
                     friendlyNamePointer,
