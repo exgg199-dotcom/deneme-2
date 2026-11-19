@@ -13,6 +13,10 @@ struct P12MakerApp: App {
                     .tabItem {
                         Label("Signing Request", systemImage: "doc.badge.plus")
                     }
+                ProfileView()
+                    .tabItem {
+                        Label("Profile", systemImage: "checkmark.seal")
+                    }
             }
         }
     }
