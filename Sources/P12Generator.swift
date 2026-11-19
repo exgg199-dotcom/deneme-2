@@ -38,8 +38,33 @@ struct P12Generator {
     private static let aes256CbcNid: Int32 = 419
     private static let multiByteStringAscii: Int32 = 0x1000 | 1
 
+    private static let evpPkeyRsaIdentifier: Int32 = 6
+    private static let evpPkeyOperationKeygen: Int32 = 1 << 2
+    private static let evpPkeyControlRsaKeygenBits: Int32 = 0x1000 + 3
+
     static func generate(request: P12GenerationRequest) throws -> Data {
-        guard let privateKey = EVP_RSA_gen(request.keySizeInBits) else {
+        guard let keyContext = EVP_PKEY_CTX_new_id(evpPkeyRsaIdentifier, nil) else {
+            throw P12GeneratorError.keyGenerationFailed
+        }
+        defer { EVP_PKEY_CTX_free(keyContext) }
+
+        guard EVP_PKEY_keygen_init(keyContext) == 1 else {
+            throw P12GeneratorError.keyGenerationFailed
+        }
+
+        guard EVP_PKEY_CTX_ctrl(
+            keyContext,
+            evpPkeyRsaIdentifier,
+            evpPkeyOperationKeygen,
+            evpPkeyControlRsaKeygenBits,
+            Int32(request.keySizeInBits),
+            nil
+        ) > 0 else {
+            throw P12GeneratorError.keyGenerationFailed
+        }
+
+        var generatedKey: OpaquePointer?
+        guard EVP_PKEY_keygen(keyContext, &generatedKey) == 1, let privateKey = generatedKey else {
             throw P12GeneratorError.keyGenerationFailed
         }
         defer { EVP_PKEY_free(privateKey) }
