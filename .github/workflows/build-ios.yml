@@ -1,0 +1,70 @@
+name: Build iOS
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned app and package IPA
+        run: |
+          set -o pipefail
+          APP_NAME="P12Maker"
+          {
+            xcodebuild \
+              -project "$APP_NAME.xcodeproj" \
+              -scheme "$APP_NAME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -derivedDataPath build \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              clean build
+          } 2>&1 | tee build.log
+          PRODUCTS_DIRECTORY="build/Build/Products/Release-iphoneos"
+          if [ ! -d "$PRODUCTS_DIRECTORY/$APP_NAME.app" ]; then
+            echo "Built application was not found at $PRODUCTS_DIRECTORY/$APP_NAME.app" | tee -a build.log
+            exit 1
+          fi
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "$PRODUCTS_DIRECTORY/$APP_NAME.app" "Payload/$APP_NAME.app"
+          zip -r "$APP_NAME-unsigned.ipa" Payload > /dev/null
+          echo "Created package:" | tee -a build.log
+          ls -lh "$APP_NAME-unsigned.ipa" | tee -a build.log
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: P12Maker-unsigned-ipa
+          path: P12Maker-unsigned.ipa
+          if-no-files-found: error
+
+      - name: Collect build error log
+        if: failure()
+        run: |
+          if [ -f build.log ]; then
+            cp build.log error.txt
+          else
+            echo "The build failed before producing a log." > error.txt
+          fi
+
+      - name: Upload build error log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P12Maker-build-error
+          path: error.txt
