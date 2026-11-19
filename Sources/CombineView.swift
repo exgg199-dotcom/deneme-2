@@ -26,7 +26,7 @@ struct CombineView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Inputs")) {
+                Section {
                     importRow(
                         title: "Certificate",
                         detail: certificateName.isEmpty ? "No file selected" : certificateName,
@@ -42,6 +42,8 @@ struct CombineView: View {
                     ) {
                         isImportingKey = true
                     }
+                } header: {
+                    Text("Inputs")
                 } footer: {
                     Text("Use the .cer the authority issued and the .key produced with your signing request.")
                 }
